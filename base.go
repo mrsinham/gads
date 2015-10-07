@@ -8,10 +8,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+	"time"
 )
 
 const (
-	baseUrl = "https://adwords.google.com/api/adwords/cm/v201506"
+	apiVersion = "v201506"
+	baseUrl    = "https://adwords.google.com/api/adwords/cm/" + apiVersion
 	// used for developpement, if true all unknown field will raise an error
 	StrictMode = false
 )
@@ -82,12 +84,20 @@ type Auth struct {
 	Client         *http.Client `json:"-"`
 }
 
+// Date is a google date, a simple type inference with methods
+type Date time.Time
+
+// String gives the google representation of a date
+func (d Date) String() string {
+	return time.Time(d).Format("20060102")
+}
+
 //
 // Selector structs
 //
 type DateRange struct {
-	Min string `xml:"min"`
-	Max string `xml:"max"`
+	Min Date `xml:"min"`
+	Max Date `xml:"max"`
 }
 
 type Predicate struct {

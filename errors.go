@@ -2,8 +2,19 @@ package gads
 
 import (
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"strings"
+)
+
+var (
+	// ErrorMissingCustomerId symbolizes that the library cant interrogate the api without a Client Customer Id
+	ErrMissingCustomerId = errors.New("missing client customer id")
+
+	// Reports
+	ErrMissingReportName         = errors.New("report must have a name")
+	ErrMissingReportType         = errors.New("report must have a type")
+	ErrInvalidReportDownloadType = errors.New("report as an invalid DownloadType")
 )
 
 type OperationError struct {
