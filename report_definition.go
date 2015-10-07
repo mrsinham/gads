@@ -2,10 +2,12 @@ package gads
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"encoding/xml"
 )
@@ -15,15 +17,31 @@ const (
 	baseReportAPIURL = "https://adwords.google.com/api/adwords/reportdownload/" + apiVersion
 
 	// DownloadFormatXML is when you want xml in return, eventually parsable in the api in the future
-	DownloadFormatXML = "XML"
+	DownloadFormatXML DownloadFormat = "XML"
 	// DownloadFormatXMLGzipped is when you want xml but compressed in gzip format
-	DownloadFormatXMLGzipped = "XML_GZIPPED"
+	DownloadFormatXMLGzipped DownloadFormat = "GZIPPED_XML"
 	// DownloadFormatCSV is when you want pure csv in return, with the first line that contains
-	DownloadFormatCSV = "CSV"
+	DownloadFormatCSV DownloadFormat = "CSV"
 	// DownloadFormatCSVGzipped is when you want csv but compressed in gzip
-	DownloadFormatCSVGzipped = "CSV_GZIPPED"
+	DownloadFormatCSVGzipped DownloadFormat = "GZIPPED_CSV"
 	// DownloadFormatTSV is when you want like csv but separated with tabs
-	DownloadFormatTSV = "TSV"
+	DownloadFormatTSV DownloadFormat = "TSV"
+
+	// DateRangeTypeCustom is the type used when you specify manually the range of the report
+	DateRangeTypeCustom DateRangeType = "CUSTOM_DATE"
+
+	DateRangeTypeToday            DateRangeType = "TODAY"
+	DateRangeTypeYesterday        DateRangeType = "YESTERDAY"
+	DateRangeTypeLast7Days        DateRangeType = "LAST_7_DAYS"
+	DateRangeTypeLastWeek         DateRangeType = "LAST_WEEK"
+	DateRangeTypeLastBusinessWeek DateRangeType = "LAST_BUSINESS_WEEK"
+	DateRangeTypeThisMonth        DateRangeType = "THIS_MONTH"
+	DateRangeTypeAllTime          DateRangeType = "ALL_TIME"
+	DateRangeTypeLast14Days       DateRangeType = "LAST_14_DAYS"
+	DateRangeTypeLast30Days       DateRangeType = "LAST_30_DAYS"
+	DateRangeTypeThisWeekSunToday DateRangeType = "THIS_WEEK_SUN_TODAY"
+	DateRangeTypeThisWeekMonToday DateRangeType = "THIS_WEEK_MON_TODAY"
+	DateRangeTypeLastWeekSunSat   DateRangeType = "LAST_WEEK_SUN_SAT"
 )
 
 // DownloadFormat is the return type of the reports that you want to fetch
@@ -34,7 +52,11 @@ type DateRangeType string
 
 // Valid returns an error if the type is not a part of the allowed DownloadFormat values
 func (d DownloadFormat) Valid() error {
-	if d != DownloadFormatCSV && d != DownloadFormatXML && d != DownloadFormatCSVGzipped {
+	if d != DownloadFormatCSV &&
+		d != DownloadFormatXML &&
+		d != DownloadFormatCSVGzipped &&
+		d != DownloadFormatXMLGzipped &&
+		d != DownloadFormatTSV {
 		return ErrInvalidReportDownloadType
 	}
 	return nil
@@ -73,6 +95,10 @@ func (r *ReportDefinition) ValidRequest() error {
 		return err
 	}
 
+	if r.Selector.DateRange != nil {
+		r.DateRangeType = DateRangeTypeCustom
+	}
+
 	return nil
 }
 
@@ -98,13 +124,21 @@ func (r *ReportDefinitionService) Request(def *ReportDefinition) (body io.ReadCl
 	}
 
 	var resp *http.Response
+
+	// spec google, some reports can take up to 10 min to be downloaded
+	r.Auth.Client.Timeout = 10 * time.Minute
+
 	resp, err = r.Auth.Client.Do(req)
 	if err != nil {
 		return
 	}
 
-	// analyze response code
 	body = resp.Body
+	// analyze response code
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New(fmt.Sprintf("request to report expected Code 200 but received %v ", resp.StatusCode))
+		return
+	}
 
 	return
 

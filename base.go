@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	apiVersion = "v201506"
+	// https://developers.google.com/adwords/api/docs/reference/
+	apiVersion = "v201509"
 	baseUrl    = "https://adwords.google.com/api/adwords/cm/" + apiVersion
 	// used for developpement, if true all unknown field will raise an error
 	StrictMode = false
@@ -88,8 +89,8 @@ type Auth struct {
 type Date time.Time
 
 // String gives the google representation of a date
-func (d Date) String() string {
-	return time.Time(d).Format("20060102")
+func (d Date) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return e.EncodeElement(time.Time(d).Format("20060102"), start)
 }
 
 //
